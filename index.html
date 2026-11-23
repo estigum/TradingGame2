@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101a22">
+  <title>Market Day — Trading Game</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #101a22;
+      color: #edf4f2;
+      font-synthesis: none;
+      --panel: #192630;
+      --muted: #9eafb5;
+      --line: #2a3b45;
+      --green: #70dfae;
+      --red: #ff8585;
+    }
+
+    * { box-sizing: border-box; }
+
+    body { margin: 0; min-width: 320px; }
+
+    button, input { font: inherit; }
+
+    button {
+      cursor: pointer;
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 15px;
+      font-weight: 700;
+      transition: filter 120ms ease, transform 120ms ease;
+    }
+
+    button:hover { filter: brightness(1.12); }
+    button:active { transform: translateY(1px); }
+    button:focus-visible, input:focus-visible { outline: 2px solid #70dfae; outline-offset: 2px; }
+
+    .page { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 34px 0 48px; }
+    header { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin-bottom: 26px; }
+    .eyebrow { color: var(--green); font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { margin: 7px 0 5px; font-size: clamp(28px, 5vw, 40px); letter-spacing: -.04em; }
+    .subtitle { margin: 0; color: var(--muted); }
+    .reset { color: #d3dddf; background: transparent; border: 1px solid var(--line); }
+
+    .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 18px; }
+    .card, .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+    .card { padding: 18px 20px; }
+    .label { display: block; color: var(--muted); font-size: 13px; margin-bottom: 9px; }
+    .value { font-size: clamp(21px, 3vw, 28px); font-weight: 750; letter-spacing: -.03em; }
+    .positive { color: var(--green); }
+    .negative { color: var(--red); }
+
+    .layout { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, .85fr); gap: 18px; align-items: start; }
+    .panel { overflow: hidden; }
+    .panel-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 18px 20px; border-bottom: 1px solid var(--line); }
+    h2 { margin: 0; font-size: 17px; }
+    .market-status { color: var(--muted); font-size: 12px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th { color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+    th, td { padding: 13px 15px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    th:first-child, td:first-child { padding-left: 20px; }
+    th:last-child, td:last-child { padding-right: 20px; }
+    tbody tr { cursor: pointer; transition: background 120ms ease; }
+    tbody tr:hover, tbody tr.selected { background: #22343e; }
+    tbody tr:last-child td { border-bottom: 0; }
+    .instrument { display: flex; align-items: center; gap: 10px; }
+    .symbol-icon { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 10px; background: #263a43; color: var(--green); font-size: 12px; font-weight: 800; }
+    .ticker { font-weight: 750; }
+    .instrument-name { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .category { color: var(--muted); font-size: 12px; }
+    .change { font-size: 13px; font-weight: 700; }
+
+    .trade-body { padding: 20px; }
+    .selected-asset { padding: 13px 14px; border-radius: 10px; background: #22343e; margin-bottom: 18px; }
+    .selected-asset strong { font-size: 16px; }
+    .selected-asset span { display: block; color: var(--muted); font-size: 13px; margin-top: 4px; }
+    label { display: block; color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+    .quantity { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    .quantity button { border-radius: 0; padding: 10px 14px; background: transparent; color: #edf4f2; font-size: 18px; }
+    input { width: 100%; min-width: 0; border: 0; padding: 10px 6px; background: transparent; color: #edf4f2; text-align: center; }
+    .trade-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+    .buy { background: var(--green); color: #10251c; }
+    .sell { background: #2a3b45; color: #edf4f2; }
+    .trade-message { min-height: 20px; margin: 13px 0 0; font-size: 13px; color: var(--muted); }
+    .trade-message.error { color: var(--red); }
+    .holdings-empty { padding: 22px 20px; color: var(--muted); font-size: 14px; text-align: center; }
+    .holding-row { display: flex; justify-content: space-between; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+    .holding-row:last-child { border-bottom: 0; }
+    .holding-quantity { color: var(--muted); font-size: 12px; margin-top: 3px; }
+    .holding-value { text-align: right; font-weight: 700; }
+    .holding-gain { color: var(--muted); font-size: 12px; margin-top: 3px; }
+    footer { margin-top: 18px; color: var(--muted); font-size: 12px; line-height: 1.5; text-align: center; }
+
+    @media (max-width: 780px) {
+      .layout { grid-template-columns: 1fr; }
+      .market { order: 0; }
+      .trade-panel { order: -1; }
+    }
+    @media (max-width: 560px) {
+      .page { width: min(100% - 20px, 1120px); padding-top: 24px; }
+      header { align-items: center; }
+      .subtitle { max-width: 240px; line-height: 1.4; }
+      .summary { gap: 8px; }
+      .card { padding: 14px 12px; }
+      .label { font-size: 11px; }
+      .value { font-size: 19px; }
+      th, td { padding: 12px 10px; }
+      th:first-child, td:first-child { padding-left: 12px; }
+      th:last-child, td:last-child { padding-right: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div>
+        <div class="eyebrow">Market Day · Trading simulator</div>
+        <h1>Your market, your moves.</h1>
+        <p class="subtitle">Build a portfolio with stocks and other instruments.</p>
+      </div>
+      <button class="reset" id="reset-game" type="button">New game</button>
+    </header>
+
+    <section class="summary" aria-label="Portfolio summary">
+      <article class="card"><span class="label">Portfolio value</span><strong class="value" id="portfolio-value">$10,000.00</strong></article>
+      <article class="card"><span class="label">Available cash</span><strong class="value" id="cash-value">$10,000.00</strong></article>
+      <article class="card"><span class="label">Today’s return</span><strong class="value" id="return-value">$0.00</strong></article>
+    </section>
+
+    <div class="layout">
+      <section class="panel market" aria-labelledby="market-heading">
+        <div class="panel-heading">
+          <h2 id="market-heading">Markets</h2>
+          <span class="market-status" id="market-status">Prices update every 5 seconds</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Instrument</th><th>Type</th><th>Price</th><th>Today</th></tr>
+            </thead>
+            <tbody id="market-list"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel trade-panel" aria-labelledby="trade-heading">
+        <div class="panel-heading"><h2 id="trade-heading">Place a trade</h2></div>
+        <div class="trade-body">
+          <div class="selected-asset" id="selected-asset" aria-live="polite"></div>
+          <label for="quantity">Quantity (whole units)</label>
+          <div class="quantity">
+            <button type="button" id="decrease-quantity" aria-label="Decrease quantity">−</button>
+            <input id="quantity" type="number" min="1" step="1" value="1" inputmode="numeric">
+            <button type="button" id="increase-quantity" aria-label="Increase quantity">+</button>
+          </div>
+          <div class="trade-buttons">
+            <button class="buy" id="buy-button" type="button">Buy</button>
+            <button class="sell" id="sell-button" type="button">Sell</button>
+          </div>
+          <p class="trade-message" id="trade-message" role="status" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="holdings-heading">
+        <div class="panel-heading"><h2 id="holdings-heading">Your holdings</h2></div>
+        <div id="holdings-list"></div>
+      </section>
+    </div>
+    <footer>All prices and trades are simulated for play only. Your game is saved in this browser.</footer>
+  </main>
+
+  <script>
+    (() => {
+      const STORAGE_KEY = "market-day-game-v1";
+      const initialInstruments = [
+        { symbol: "NOVA", name: "Nova Technologies", type: "Stock", price: 142.36, volatility: 0.018 },
+        { symbol: "PINE", name: "Pine & Co.", type: "Stock", price: 86.14, volatility: 0.014 },
+        { symbol: "AERO", name: "AeroWorks", type: "Stock", price: 231.82, volatility: 0.022 },
+        { symbol: "WIDE", name: "World Index Fund", type: "ETF", price: 418.55, volatility: 0.009 },
+        { symbol: "GOLD", name: "Gold", type: "Commodity", price: 2034.70, volatility: 0.007 },
+        { symbol: "BTC", name: "Bitcoin", type: "Crypto", price: 67240.00, volatility: 0.035 }
+      ];
+      const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+      let state = loadGame();
+      let selectedSymbol = initialInstruments[0].symbol;
+
+      const elements = {
+        cash: document.getElementById("cash-value"),
+        portfolio: document.getElementById("portfolio-value"),
+        dailyReturn: document.getElementById("return-value"),
+        market: document.getElementById("market-list"),
+        holdings: document.getElementById("holdings-list"),
+        selected: document.getElementById("selected-asset"),
+        quantity: document.getElementById("quantity"),
+        message: document.getElementById("trade-message"),
+        status: document.getElementById("market-status")
+      };
+
+      function freshGame() {
+        return {
+          cash: 10000,
+          openingValue: 10000,
+          instruments: initialInstruments.map(instrument => ({ ...instrument, openingPrice: instrument.price })),
+          holdings: {}
+        };
+      }
+
+      function loadGame() {
+        try {
+          const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+          if (!saved || !Array.isArray(saved.instruments) || !saved.holdings ||
+              !Number.isFinite(saved.cash) || !Number.isFinite(saved.openingValue)) return freshGame();
+          const instruments = initialInstruments.map(template => {
+            const prior = saved.instruments.find(item => item.symbol === template.symbol);
+            return {
+              ...template,
+              price: Number.isFinite(prior?.price) && prior.price > 0 ? prior.price : template.price,
+              openingPrice: Number.isFinite(prior?.openingPrice) && prior.openingPrice > 0 ? prior.openingPrice : template.price
+            };
+          });
+          const holdings = {};
+          for (const instrument of instruments) {
+            const quantity = saved.holdings[instrument.symbol];
+            if (Number.isSafeInteger(quantity) && quantity > 0) holdings[instrument.symbol] = quantity;
+          }
+          return { cash: Math.max(0, saved.cash), openingValue: saved.openingValue, instruments, holdings };
+        } catch {
+          return freshGame();
+        }
+      }
+
+      function saveGame() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch {
+          elements.status.textContent = "Could not save this game in your browser";
+        }
+      }
+
+      function formatMoney(value) {
+        return currency.format(value);
+      }
+
+      function instrumentFor(symbol) {
+        return state.instruments.find(instrument => instrument.symbol === symbol);
+      }
+
+      function render() {
+        elements.market.innerHTML = state.instruments.map(instrument => {
+          const change = ((instrument.price / instrument.openingPrice) - 1) * 100;
+          const direction = change >= 0 ? "positive" : "negative";
+          return `<tr data-symbol="${instrument.symbol}" class="${instrument.symbol === selectedSymbol ? "selected" : ""}" tabindex="0" aria-label="Select ${instrument.name}">
+            <td><div class="instrument"><span class="symbol-icon">${instrument.symbol.slice(0, 2)}</span><div><div class="ticker">${instrument.symbol}</div><div class="instrument-name">${instrument.name}</div></div></div></td>
+            <td class="category">${instrument.type}</td>
+            <td>${formatMoney(instrument.price)}</td>
+            <td class="change ${direction}">${change >= 0 ? "+" : ""}${change.toFixed(2)}%</td>
+          </tr>`;
+        }).join("");
+
+        const selected = instrumentFor(selectedSymbol);
+        elements.selected.innerHTML = `<strong>${selected.symbol} · ${selected.name}</strong><span>${formatMoney(selected.price)} per unit</span>`;
+
+        const holdings = Object.entries(state.holdings).filter(([, quantity]) => quantity > 0);
+        elements.holdings.innerHTML = holdings.length ? holdings.map(([symbol, quantity]) => {
+          const instrument = instrumentFor(symbol);
+          const value = instrument.price * quantity;
+          const gain = (instrument.price - instrument.openingPrice) * quantity;
+          return `<div class="holding-row"><div><strong>${instrument.symbol}</strong><div class="holding-quantity">${quantity} unit${quantity === 1 ? "" : "s"}</div></div><div class="holding-value">${formatMoney(value)}<div class="holding-gain ${gain >= 0 ? "positive" : "negative"}">${gain >= 0 ? "+" : ""}${formatMoney(gain)}</div></div></div>`;
+        }).join("") : `<div class="holdings-empty">No holdings yet. Choose an instrument and place your first trade.</div>`;
+
+        const holdingsValue = holdings.reduce((sum, [symbol, quantity]) => sum + instrumentFor(symbol).price * quantity, 0);
+        const portfolioValue = state.cash + holdingsValue;
+        const dailyReturn = portfolioValue - state.openingValue;
+        elements.cash.textContent = formatMoney(state.cash);
+        elements.portfolio.textContent = formatMoney(portfolioValue);
+        elements.dailyReturn.textContent = `${dailyReturn >= 0 ? "+" : ""}${formatMoney(dailyReturn)}`;
+        elements.dailyReturn.className = `value ${dailyReturn >= 0 ? "positive" : "negative"}`;
+      }
+
+      function trade(side) {
+        const quantity = Number(elements.quantity.value);
+        const instrument = instrumentFor(selectedSymbol);
+        if (!Number.isSafeInteger(quantity) || quantity <= 0) {
+          showMessage("Enter a whole number greater than zero.", true);
+          return;
+        }
+        const total = instrument.price * quantity;
+        if (!Number.isFinite(total)) {
+          showMessage("That trade is too large.", true);
+          return;
+        }
+        if (side === "buy") {
+          if (total > state.cash) {
+            showMessage("Not enough cash for this trade.", true);
+            return;
+          }
+          state.cash -= total;
+          state.holdings[selectedSymbol] = (state.holdings[selectedSymbol] || 0) + quantity;
+          showMessage(`Bought ${quantity} ${selectedSymbol} for ${formatMoney(total)}.`);
+        } else {
+          if ((state.holdings[selectedSymbol] || 0) < quantity) {
+            showMessage(`You don't have enough ${selectedSymbol} to sell.`, true);
+            return;
+          }
+          state.cash += total;
+          state.holdings[selectedSymbol] -= quantity;
+          if (state.holdings[selectedSymbol] === 0) delete state.holdings[selectedSymbol];
+          showMessage(`Sold ${quantity} ${selectedSymbol} for ${formatMoney(total)}.`);
+        }
+        saveGame();
+        render();
+      }
+
+      function showMessage(message, isError = false) {
+        elements.message.textContent = message;
+        elements.message.classList.toggle("error", isError);
+      }
+
+      elements.market.addEventListener("click", event => {
+        const row = event.target.closest("tr[data-symbol]");
+        if (!row) return;
+        selectedSymbol = row.dataset.symbol;
+        showMessage("");
+        render();
+      });
+      elements.market.addEventListener("keydown", event => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        const row = event.target.closest("tr[data-symbol]");
+        if (!row) return;
+        event.preventDefault();
+        selectedSymbol = row.dataset.symbol;
+        showMessage("");
+        render();
+      });
+      document.getElementById("buy-button").addEventListener("click", () => trade("buy"));
+      document.getElementById("sell-button").addEventListener("click", () => trade("sell"));
+      document.getElementById("increase-quantity").addEventListener("click", () => {
+        const quantity = Number(elements.quantity.value);
+        elements.quantity.value = Number.isSafeInteger(quantity) && quantity >= 1 ? quantity + 1 : 1;
+      });
+      document.getElementById("decrease-quantity").addEventListener("click", () => {
+        const quantity = Number(elements.quantity.value);
+        elements.quantity.value = Number.isSafeInteger(quantity) && quantity > 1 ? quantity - 1 : 1;
+      });
+      document.getElementById("reset-game").addEventListener("click", () => {
+        if (!window.confirm("Start a new game? This will reset your cash and holdings.")) return;
+        state = freshGame();
+        selectedSymbol = initialInstruments[0].symbol;
+        elements.quantity.value = "1";
+        showMessage("New game started with $10,000.");
+        saveGame();
+        render();
+      });
+
+      render();
+      setInterval(() => {
+        for (const instrument of state.instruments) {
+          const movement = (Math.random() * 2 - 1) * instrument.volatility;
+          instrument.price = Math.max(0.01, Math.round(instrument.price * (1 + movement) * 100) / 100);
+        }
+        saveGame();
+        render();
+      }, 5000);
+    })();
+  </script>
+</body>
+</html>
